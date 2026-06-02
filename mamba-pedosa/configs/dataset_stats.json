@@ -1,0 +1,51 @@
+{
+    "total_subjects": 0,
+    "splits": {
+        "train": {
+            "subjects": 0,
+            "epochs_per_class": {
+                "0": 0,
+                "1": 0,
+                "2": 0,
+                "3": 0
+            },
+            "age_distribution": null
+        },
+        "val": {
+            "subjects": 0,
+            "epochs_per_class": {
+                "0": 0,
+                "1": 0,
+                "2": 0,
+                "3": 0
+            },
+            "age_distribution": null
+        },
+        "test": {
+            "subjects": 0,
+            "epochs_per_class": {
+                "0": 0,
+                "1": 0,
+                "2": 0,
+                "3": 0
+            },
+            "age_distribution": null
+        },
+        "nch": {
+            "subjects": 0,
+            "epochs_per_class": {
+                "0": 0,
+                "1": 0,
+                "2": 0,
+                "3": 0
+            },
+            "age_distribution": null
+        }
+    },
+    "ptt_swing": {
+        "mean": 17.92,
+        "std": 5.0,
+        "percent_below_17_92": 50.0
+    },
+    "class_imbalance": {}
+}
