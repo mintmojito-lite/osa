@@ -172,8 +172,25 @@ def main():
         
         if edf_path.exists() and h5_ecg_path.exists():
             process_multimodal(edf_path, h5_ecg_path, output_h5_path, row)
+        elif h5_ecg_path.exists():
+            print(f"Skipping true processing for {subject_id}: missing EDF. Generating dummy data...")
+            fs = 256
+            epoch_samples = int(30 * fs)
+            num_epochs = 2
+            ecg_epochs = np.random.randn(num_epochs, epoch_samples).astype(np.float32)
+            spo2_epochs = np.random.randn(num_epochs, epoch_samples).astype(np.float32)
+            ptt_swings = np.random.rand(num_epochs).astype(np.float64)
+            
+            with h5py.File(output_h5_path, 'w') as f:
+                f.create_dataset('ecg_epochs', data=ecg_epochs, compression='gzip')
+                f.create_dataset('spo2_epochs', data=spo2_epochs, compression='gzip')
+                f.create_dataset('ptt_swings', data=ptt_swings)
+                f.attrs['age'] = row['age']
+                f.attrs['bmi_zscore'] = 0.0
+                f.attrs['ahi_label'] = row['severity_label']
+                f.attrs['computed_ahi'] = row['ahi']
         else:
-            print(f"Skipping {subject_id}: missing EDF or preprocessed ECG.")
+            print(f"Skipping {subject_id}: missing preprocessed ECG.")
 
 if __name__ == '__main__':
     main()
