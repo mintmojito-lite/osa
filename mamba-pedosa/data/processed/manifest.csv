@@ -1,0 +1,8 @@
+subject_id,age,sex,ahi,severity_label,file_path,dataset
+BCH_001,5.2,M,0.5,Normal,C:\OSA\mamba-pedosa\data\raw\bch\m0051.edf,BCH
+BCH_002,8.4,F,3.2,Mild,C:\OSA\mamba-pedosa\data\raw\bch\m0113.edf,BCH
+BCH_003,12.1,M,7.5,Moderate,C:\OSA\mamba-pedosa\data\raw\bch\m0238.edf,BCH
+BCH_004,6.8,F,15.2,Severe,C:\OSA\mamba-pedosa\data\raw\bch\m0539.edf,BCH
+NCH_001,4.5,M,0.8,Normal,C:\OSA\mamba-pedosa\data\raw\nch\m1081.edf,NCH
+NCH_002,9.2,F,2.1,Mild,C:\OSA\mamba-pedosa\data\raw\nch\m1101.edf,NCH
+NCH_003,11.5,M,11.4,Severe,C:\OSA\mamba-pedosa\data\raw\nch\m1134.edf,NCH
