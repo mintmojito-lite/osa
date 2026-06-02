@@ -7,3 +7,5 @@ pandas<2.0.0
 numpy==1.26.4
 tqdm==4.66.4
 scikit-learn==1.4.2
+torch
+pytest
