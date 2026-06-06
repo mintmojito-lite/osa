@@ -1,0 +1,87 @@
+--- Mamba-PedOSA Architecture Summary ---
+Total Parameters:      2,769,156
+Encoder Parameters:    288,512
+Fusion Parameters:     150,656
+SSM Stack Parameters:  2,131,200
+DER Head Parameters:   198,788
+-----------------------------------------
+
+Model Structure:
+MambaPedOSA(
+  (encoder): SleepJEPAEncoder(
+    (blocks): ModuleList(
+      (0): ConvBlock(
+        (conv): Conv1d(1, 64, kernel_size=(7,), stride=(2,), padding=(3,))
+        (bn): BatchNorm1d(64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        (gelu): GELU(approximate='none')
+        (dropout): Dropout(p=0.1, inplace=False)
+      )
+      (1): ConvBlock(
+        (conv): Conv1d(64, 128, kernel_size=(7,), stride=(2,), padding=(3,))
+        (bn): BatchNorm1d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        (gelu): GELU(approximate='none')
+        (dropout): Dropout(p=0.1, inplace=False)
+      )
+      (2): ConvBlock(
+        (conv): Conv1d(128, 256, kernel_size=(7,), stride=(2,), padding=(3,))
+        (bn): BatchNorm1d(256, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        (gelu): GELU(approximate='none')
+        (dropout): Dropout(p=0.1, inplace=False)
+      )
+    )
+  )
+  (fusion): MultiModalFusion(
+    (spo2_branch): Sequential(
+      (0): Conv1d(1, 64, kernel_size=(7,), stride=(1,), padding=(3,))
+      (1): GELU(approximate='none')
+      (2): Conv1d(64, 128, kernel_size=(5,), stride=(1,), padding=(2,))
+      (3): AdaptiveAvgPool1d(output_size=960)
+    )
+    (ptt_expand): Linear(in_features=1, out_features=960, bias=True)
+    (clinical_embed): Linear(in_features=3, out_features=32, bias=True)
+    (projection): Conv1d(417, 256, kernel_size=(1,), stride=(1,))
+  )
+  (ssm_layers): ModuleList(
+    (0-5): 6 x BiMambaLayer(
+      (forward_mamba): MambaBlock(
+        (mamba): SimpleSSM(
+          (proj_delta): Linear(in_features=256, out_features=256, bias=True)
+          (proj_B): Linear(in_features=256, out_features=16, bias=True)
+          (proj_C): Linear(in_features=256, out_features=16, bias=True)
+        )
+        (norm): LayerNorm((256,), eps=1e-05, elementwise_affine=True)
+        (dropout): Dropout(p=0.1, inplace=False)
+      )
+      (backward_mamba): MambaBlock(
+        (mamba): SimpleSSM(
+          (proj_delta): Linear(in_features=256, out_features=256, bias=True)
+          (proj_B): Linear(in_features=256, out_features=16, bias=True)
+          (proj_C): Linear(in_features=256, out_features=16, bias=True)
+        )
+        (norm): LayerNorm((256,), eps=1e-05, elementwise_affine=True)
+        (dropout): Dropout(p=0.1, inplace=False)
+      )
+      (senet): SENet(
+        (squeeze): Sequential(
+          (0): Linear(in_features=512, out_features=64, bias=True)
+          (1): GELU(approximate='none')
+          (2): Linear(in_features=64, out_features=512, bias=True)
+          (3): Sigmoid()
+        )
+        (project): Linear(in_features=512, out_features=256, bias=True)
+      )
+    )
+  )
+  (pool): AdaptiveAvgPool1d(output_size=1)
+  (der_head): DERHead(
+    (net): Sequential(
+      (0): Linear(in_features=256, out_features=512, bias=True)
+      (1): LayerNorm((512,), eps=1e-05, elementwise_affine=True)
+      (2): GELU(approximate='none')
+      (3): Dropout(p=0.2, inplace=False)
+      (4): Linear(in_features=512, out_features=128, bias=True)
+      (5): GELU(approximate='none')
+      (6): Linear(in_features=128, out_features=4, bias=True)
+    )
+  )
+)

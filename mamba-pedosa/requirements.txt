@@ -9,3 +9,15 @@ tqdm==4.66.4
 scikit-learn==1.4.2
 torch
 pytest
+einops
+huggingface_hub
+omegaconf
+PyYAML
+mamba-ssm
+causal-conv1d
+pytorch-lightning
+wandb
+torchmetrics
+shap
+pingouin
+netcal

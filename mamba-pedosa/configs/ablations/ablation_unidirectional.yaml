@@ -1,0 +1,22 @@
+der_hidden: 512
+dropout: 0.1
+encoder_channels:
+- 1
+- 64
+- 128
+- 256
+encoder_strides:
+- 2
+- 2
+- 2
+freeze_encoder_epochs: 10
+ssm_d_conv: 4
+ssm_d_model: 256
+ssm_d_state: 16
+ssm_expand: 2
+ssm_n_layers: 6
+use_bimamba: false
+use_clinical: true
+use_der: true
+use_ptt: true
+use_spo2: true

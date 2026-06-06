@@ -34,40 +34,57 @@ class PedOSADataset(Dataset):
         self._load_metadata()
 
     def _load_metadata(self):
-        # We assume files are named like: {split}_subjectXXX.h5
-        # e.g., train_sub001.h5, nch_sub001.h5
-        search_pattern = os.path.join(self.data_dir, f"{self.split}_*.h5")
-        file_paths = glob.glob(search_pattern)
+        # Read configs/splits.json
+        import json
         
-        for file_path in file_paths:
-            with h5py.File(file_path, 'r') as f:
-                ecg_len = len(f['ecg'])
+        # We assume base_dir is parent of data_dir
+        base_dir = os.path.dirname(os.path.dirname(self.data_dir))
+        splits_path = os.path.join(base_dir, 'configs', 'splits.json')
+        
+        with open(splits_path, 'r') as f:
+            splits = json.load(f)
+            
+        # Map split names
+        split_key = self.split
+        if self.split == 'nch':
+            split_key = 'test_nch'
+            
+        subject_ids = splits.get(split_key, [])
+        
+        for subject_id in subject_ids:
+            # Note: the dataset uses ecg.h5 and multimodal.h5, but we can read from multimodal.h5
+            # since it probably has all data or we read from both.
+            # The dummy pipeline creates ecg.h5 and multimodal.h5, but multimodal.h5 has everything:
+            # 'ecg_epochs', 'spo2_epochs', 'ptt_swings'.
+            file_prefix = os.path.join(self.data_dir, f"{subject_id}")
+            
+            multi_file_path = f"{file_prefix}_multimodal.h5"
+            if not os.path.exists(multi_file_path):
+                continue
                 
-                # Calculate number of valid overlapping windows
-                num_windows = (ecg_len - self.ecg_window) // self.ecg_stride + 1
+            with h5py.File(multi_file_path, 'r') as f:
+                ecg_epochs = f['ecg_epochs']
+                num_epochs = ecg_epochs.shape[0]
                 
                 # Extract subject-level metadata
-                # Assuming these are stored as attributes or scalar datasets
                 clinical = (
-                    float(f.attrs.get('age_norm', 0.0)),
-                    float(f.attrs.get('bmi_z', 0.0)),
-                    float(f.attrs.get('sex', 0.0))
+                    float(f.attrs.get('age', 0.0)),
+                    float(f.attrs.get('bmi_zscore', 0.0)),
+                    0.0 # Dummy sex
                 )
-                ahi_label = float(f.attrs.get('ahi_label', 0.0))
-                severity_class = int(f.attrs.get('severity_class', 0))
-                is_longitudinal = bool(f.attrs.get('is_longitudinal', False))
+                ahi_label = float(f.attrs.get('computed_ahi', 0.0))
+                severity_class = f.attrs.get('ahi_label', 'Normal')
+                severity_map = {'Normal': 0, 'Mild': 1, 'Moderate': 2, 'Severe': 3}
+                severity_class_idx = severity_map.get(severity_class, 0)
+                is_longitudinal = False
                 
-                for i in range(num_windows):
-                    ecg_start = i * self.ecg_stride
-                    spo2_start = i * self.spo2_stride
-                    
+                for i in range(num_epochs):
                     self.samples.append({
-                        'file_path': file_path,
-                        'ecg_start': ecg_start,
-                        'spo2_start': spo2_start,
+                        'file_prefix': file_prefix,
+                        'epoch_idx': i,
                         'clinical': clinical,
                         'ahi_label': ahi_label,
-                        'severity_class': severity_class,
+                        'severity_class': severity_class_idx,
                         'is_longitudinal': is_longitudinal
                     })
 
@@ -76,21 +93,18 @@ class PedOSADataset(Dataset):
 
     def __getitem__(self, idx):
         sample_info = self.samples[idx]
+        file_prefix = sample_info['file_prefix']
         
-        with h5py.File(sample_info['file_path'], 'r') as f:
-            ecg_start = sample_info['ecg_start']
-            spo2_start = sample_info['spo2_start']
+        multi_file = f"{file_prefix}_multimodal.h5"
+        
+        with h5py.File(multi_file, 'r') as f_multi:
+            epoch_idx = sample_info['epoch_idx']
             
-            ecg = f['ecg'][ecg_start : ecg_start + self.ecg_window]
-            spo2 = f['spo2'][spo2_start : spo2_start + self.spo2_window]
+            ecg = f_multi['ecg_epochs'][epoch_idx]
+            spo2 = f_multi['spo2_epochs'][epoch_idx]
             
-            # For PTT swing, assuming it's aligned with SpO2 or ECG.
-            # If it's a dataset, we extract the window and take the mean to get a scalar.
-            # Or if it's already an array of length num_windows, we could just index it.
-            # Let's assume it's continuous at SpO2 frequency.
-            if 'ptt_swing' in f:
-                ptt_window = f['ptt_swing'][spo2_start : spo2_start + self.spo2_window]
-                ptt_swing_scalar = float(np.mean(ptt_window))
+            if 'ptt_swings' in f_multi:
+                ptt_swing_scalar = float(f_multi['ptt_swings'][epoch_idx])
             else:
                 ptt_swing_scalar = 17.92 # fallback default
                 
