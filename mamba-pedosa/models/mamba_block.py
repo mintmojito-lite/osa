@@ -19,8 +19,8 @@ class SimpleSSM(nn.Module):
         self.d_model = d_model
         self.d_state = d_state
         
-        # Learnable parameters
-        self.A = nn.Parameter(torch.randn(d_model, d_state) * 0.1)
+        # Learnable parameters (A must be strictly negative for stability)
+        self.A_log = nn.Parameter(torch.randn(d_model, d_state) * 0.1)
         self.D = nn.Parameter(torch.randn(d_model))
         
         # Selective projections
@@ -50,8 +50,9 @@ class SimpleSSM(nn.Module):
             bt = B_val[:, t, :].unsqueeze(1) # (B, 1, N)
             ct = C_val[:, t, :].unsqueeze(1) # (B, 1, N)
             
-            # ZOH Discretization
-            A_bar = torch.exp(dt * self.A) # (B, D, N)
+            # ZOH Discretization (A is strictly negative)
+            A_stable = -torch.exp(self.A_log)
+            A_bar = torch.exp(dt * A_stable) # (B, D, N)
             B_bar = dt * bt # Simplified discretization for B
             
             # Update state

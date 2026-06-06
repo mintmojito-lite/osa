@@ -8,7 +8,7 @@ from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
 from data.dataset import get_dataloaders
 from training.lightning_module import MambaPedOSAModule
 
-def train_model(config_path, data_dir, gpus, fast_dev_run, run_name):
+def train_model(config_path, data_dir, gpus, fast_dev_run, run_name, **kwargs):
     print(f"\n{'='*50}\nStarting Training: {run_name}\n{'='*50}")
     
     with open(config_path, 'r') as f:
@@ -43,7 +43,7 @@ def train_model(config_path, data_dir, gpus, fast_dev_run, run_name):
     )
     
     trainer = pl.Trainer(
-        max_epochs=150,
+        max_epochs=kwargs.get('epochs', 150),
         accelerator='gpu' if gpus > 0 else 'cpu',
         devices=gpus if gpus > 0 else 1,
         logger=logger,
@@ -59,12 +59,13 @@ def main():
     parser.add_argument('--config', type=str, default='configs/model_config.yaml', help='Path to main model config')
     parser.add_argument('--ablation', action='store_true', help='Run ablation experiments automatically')
     parser.add_argument('--gpus', type=int, default=1, help='Number of GPUs')
+    parser.add_argument('--epochs', type=int, default=150, help='Max epochs')
     parser.add_argument('--fast_dev_run', action='store_true', help='Run a quick PyTorch Lightning dev run')
     parser.add_argument('--data_dir', type=str, default='data/features', help='Path to dataset directory')
     args = parser.parse_args()
     
     # 1. Main Training
-    train_model(args.config, args.data_dir, args.gpus, args.fast_dev_run, run_name='main_mamba_pedosa')
+    train_model(args.config, args.data_dir, args.gpus, args.fast_dev_run, run_name='main_mamba_pedosa', epochs=args.epochs)
     
     # 2. Auto-run Ablations
     if args.ablation:
@@ -79,7 +80,7 @@ def main():
         for abl_cfg in ablation_configs:
             if os.path.exists(abl_cfg):
                 run_name = os.path.splitext(os.path.basename(abl_cfg))[0]
-                train_model(abl_cfg, args.data_dir, args.gpus, args.fast_dev_run, run_name=run_name)
+                train_model(abl_cfg, args.data_dir, args.gpus, args.fast_dev_run, run_name=run_name, epochs=args.epochs)
             else:
                 print(f"Warning: Ablation config {abl_cfg} not found. Skipping.")
 

@@ -50,8 +50,9 @@ class MambaPedOSA(nn.Module):
         # 4. Global Pooling
         self.pool = nn.AdaptiveAvgPool1d(1)
         
-        # 5. Evidential Regression Head
+        # 5. Evidential Regression Head & Aux Classification Head
         self.der_head = DERHead(in_features=config['ssm_d_model'])
+        self.aux_cls_head = nn.Linear(config['ssm_d_model'], 4)
         
     def forward(self, ecg, spo2, ptt, clinical):
         # Ensure correct dimensionality
@@ -75,8 +76,10 @@ class MambaPedOSA(nn.Module):
         x = x.transpose(1, 2)
         x = self.pool(x).squeeze(-1) # (B, D)
         
-        # Regression head
-        return self.der_head(x)
+        # Regression head & Aux Classification
+        out = self.der_head(x)
+        out['class_logits'] = self.aux_cls_head(x)
+        return out
 
 def report_parameters(model):
     def count_params(module):
