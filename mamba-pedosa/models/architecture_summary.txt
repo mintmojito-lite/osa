@@ -1,9 +1,10 @@
 --- Mamba-PedOSA Architecture Summary ---
-Total Parameters:      2,769,156
+Total Parameters:      2,637,062
 Encoder Parameters:    288,512
 Fusion Parameters:     150,656
 SSM Stack Parameters:  2,131,200
-DER Head Parameters:   198,788
+EDL Head Parameters:   33,412
+AHI Head Parameters:   33,025
 -----------------------------------------
 
 Model Structure:
@@ -73,15 +74,18 @@ MambaPedOSA(
     )
   )
   (pool): AdaptiveAvgPool1d(output_size=1)
-  (der_head): DERHead(
-    (net): Sequential(
-      (0): Linear(in_features=256, out_features=512, bias=True)
-      (1): LayerNorm((512,), eps=1e-05, elementwise_affine=True)
-      (2): GELU(approximate='none')
-      (3): Dropout(p=0.2, inplace=False)
-      (4): Linear(in_features=512, out_features=128, bias=True)
-      (5): GELU(approximate='none')
-      (6): Linear(in_features=128, out_features=4, bias=True)
+  (edl_head): EDLClassificationHead(
+    (mlp): Sequential(
+      (0): Linear(in_features=256, out_features=128, bias=True)
+      (1): ReLU()
+      (2): Linear(in_features=128, out_features=4, bias=True)
+      (3): Softplus(beta=1.0, threshold=20.0)
     )
   )
+  (ahi_head): AHIRegressionHead(
+    (fc1): Linear(in_features=256, out_features=128, bias=True)
+    (relu): ReLU()
+    (fc2): Linear(in_features=128, out_features=1, bias=True)
+  )
+  (sleep_wake_head): Linear(in_features=256, out_features=1, bias=True)
 )

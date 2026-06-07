@@ -18,10 +18,9 @@ class MambaPedOSAModule(pl.LightningModule):
         self.lr = lr
         
         # severity classification weights (0=Normal, 1=Mild, 2=Moderate, 3=Severe)
-        focal_weights = torch.tensor([0.25, 0.5, 1.0, 2.0])
+        # We don't need focal_weights for the current EvidentialLoss implementation
         
-        # Evidential loss + 0.2 * cross_entropy
-        self.criterion = PedOSALoss(evidential_coeff=0.1, cls_weight=0.2, focal_weights=focal_weights)
+        self.criterion = PedOSALoss(evidential_coeff=1.0, ahi_coeff=0.5, sw_coeff=0.3)
         
         self.val_step_outputs = []
 
@@ -66,10 +65,9 @@ class MambaPedOSAModule(pl.LightningModule):
         self.log('val_loss', loss_dict['total_loss'], prog_bar=True, on_epoch=True)
         
         # Store for epoch-level metrics
-        probs = F.softmax(preds['class_logits'], dim=1)
         self.val_step_outputs.append({
-            'gamma': preds['gamma'].detach().cpu(),
-            'probs': probs.detach().cpu(),
+            'ahi_pred': preds['ahi_pred'].detach().cpu(),
+            'probs': preds['prob'].detach().cpu(),
             'targets_ahi': targets['ahi_label'].detach().cpu(),
             'targets_cls': targets['severity_class'].detach().cpu()
         })
@@ -80,13 +78,13 @@ class MambaPedOSAModule(pl.LightningModule):
         if not self.val_step_outputs:
             return
             
-        gamma = torch.cat([x['gamma'] for x in self.val_step_outputs]).numpy()
+        ahi_pred = torch.cat([x['ahi_pred'] for x in self.val_step_outputs]).numpy()
         probs = torch.cat([x['probs'] for x in self.val_step_outputs]).numpy()
         targets_ahi = torch.cat([x['targets_ahi'] for x in self.val_step_outputs]).numpy()
         targets_cls = torch.cat([x['targets_cls'] for x in self.val_step_outputs]).numpy()
         
         # 1. Continuous AHI MAE
-        mae = np.mean(np.abs(gamma - targets_ahi))
+        mae = np.mean(np.abs(ahi_pred - targets_ahi))
         self.log('val_mae', mae, prog_bar=True)
         
         # 2. Brier Score

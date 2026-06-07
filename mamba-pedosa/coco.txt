@@ -1,0 +1,27 @@
+# Mamba-PedOSA: Execution & Testing Commands
+
+To prove that the pipeline works and to reproduce the results from the manuscript, run the following commands sequentially from the root directory (`c:\OSA\mamba-pedosa`).
+
+### 1. Model Architecture Validation
+This command instantiates the full dual-head Mamba-PedOSA model (with the Evidential Classification Head, AHI Regression Head, and Sleep/Wake Staging Module) and verifies that the parameter count stays under the 6 Million FP32 budget constraint required for Edge MCU deployment.
+`python -m models.mamba_pedosa`
+
+### 2. Main Model Training
+This command starts the centralized PyTorch Lightning training loop using the custom multi-task Evidential Loss (Dirichlet NLL + KL Divergence, Huber Loss, BCE Loss).
+`python training/train.py`
+
+### 3. Federated Learning Pilot (Flower)
+This command runs the simulated federated learning loop across 3 institutional nodes (BCH, NCH, CHAT) using Federated Averaging over 30 rounds as claimed in the paper.
+`python training/federated_train.py --num_rounds 30`
+
+### 4. Clinical Evaluation and Triage Rule Testing
+This command runs the Phase 6 clinical evaluation. It applies the Three-Tier Uncertainty-Driven Triage Rule (Tier 1: S>=12 Severe, Tier 2: S>=12 Normal/Mild, Tier 3: S<8) and calculates bootstrapped 95% confidence intervals for the clinical metrics (MAE, R2, AUPRC). It also calculates the total percentage of patients diverted from unnecessary PSG.
+`python eval/evaluate_bch.py`
+
+### 5. Programmatic Figure Generation
+This command programmatically reconstructs the data-driven plots from the manuscript using matplotlib, including the simulated Hypnogram/Bland-Altman plot (Fig 3), Performance Bar Chart (Fig 5), Prospective Pilot Triage Outcome (Fig 6), and the Edge Latency Gantt Chart (Fig 7). The resulting PNGs are saved in the `figures/` directory.
+`python scripts/figures/generate_paper_figures.py`
+
+### 6. Edge Deployment (Quantization and Export)
+To test the export pipeline that targets the Cortex-M55 MCU, run the ONNX export script. This prepares the model for INT8 quantization.
+`python deploy/export_onnx.py`

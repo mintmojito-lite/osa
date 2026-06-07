@@ -5,11 +5,47 @@ import torch.nn as nn
 from models.foundation import SleepJEPAEncoder
 from models.fusion import MultiModalFusion
 from models.bi_mamba import BiMambaLayer
-from models.der_head import DERHead
+
+class EDLClassificationHead(nn.Module):
+    def __init__(self, in_features, num_classes=4):
+        super().__init__()
+        self.mlp = nn.Sequential(
+            nn.Linear(in_features, in_features // 2),
+            nn.ReLU(),
+            nn.Linear(in_features // 2, num_classes),
+            nn.Softplus() # Ensures non-negative evidence e_k >= 0
+        )
+        
+    def forward(self, x):
+        evidence = self.mlp(x)
+        alpha = evidence + 1.0
+        S = torch.sum(alpha, dim=1, keepdim=True)
+        prob = alpha / S
+        uncertainty = 4.0 / S # K=4 classes
+        return {
+            'evidence': evidence,
+            'alpha': alpha,
+            'S': S,
+            'prob': prob,
+            'uncertainty': uncertainty
+        }
+
+class AHIRegressionHead(nn.Module):
+    def __init__(self, in_features):
+        super().__init__()
+        self.fc1 = nn.Linear(in_features, in_features // 2)
+        self.relu = nn.ReLU()
+        self.fc2 = nn.Linear(in_features // 2, 1)
+        
+    def forward(self, x):
+        residual = x
+        out = self.relu(self.fc1(x))
+        out = self.fc2(out)
+        return out
 
 class MambaPedOSA(nn.Module):
     """
-    Full ABi-Mamba Architecture with Deep Evidential Regression.
+    Full ABi-Mamba Architecture with Evidential Classification, AHI Regression, and Sleep/Wake Staging.
     """
     def __init__(self, config=None):
         super().__init__()
@@ -50,9 +86,12 @@ class MambaPedOSA(nn.Module):
         # 4. Global Pooling
         self.pool = nn.AdaptiveAvgPool1d(1)
         
-        # 5. Evidential Regression Head & Aux Classification Head
-        self.der_head = DERHead(in_features=config['ssm_d_model'])
-        self.aux_cls_head = nn.Linear(config['ssm_d_model'], 4)
+        # 5. Output Heads (Classification, Regression, Sleep/Wake)
+        self.edl_head = EDLClassificationHead(in_features=config['ssm_d_model'])
+        self.ahi_head = AHIRegressionHead(in_features=config['ssm_d_model'])
+        
+        # Binary sleep/wake classifier
+        self.sleep_wake_head = nn.Linear(config['ssm_d_model'], 1)
         
     def forward(self, ecg, spo2, ptt, clinical):
         # Ensure correct dimensionality
@@ -77,8 +116,9 @@ class MambaPedOSA(nn.Module):
         x = self.pool(x).squeeze(-1) # (B, D)
         
         # Regression head & Aux Classification
-        out = self.der_head(x)
-        out['class_logits'] = self.aux_cls_head(x)
+        out = self.edl_head(x)
+        out['ahi_pred'] = self.ahi_head(x).squeeze(-1)
+        out['sleep_wake_logits'] = self.sleep_wake_head(x).squeeze(-1)
         return out
 
 def report_parameters(model):
@@ -88,7 +128,8 @@ def report_parameters(model):
     total_params = count_params(model)
     encoder_params = count_params(model.encoder)
     ssm_params = count_params(model.ssm_layers)
-    der_params = count_params(model.der_head)
+    edl_params = count_params(model.edl_head)
+    ahi_params = count_params(model.ahi_head)
     fusion_params = count_params(model.fusion)
     
     report = (
@@ -97,7 +138,8 @@ def report_parameters(model):
         f"Encoder Parameters:    {encoder_params:,}\n"
         f"Fusion Parameters:     {fusion_params:,}\n"
         f"SSM Stack Parameters:  {ssm_params:,}\n"
-        f"DER Head Parameters:   {der_params:,}\n"
+        f"EDL Head Parameters:   {edl_params:,}\n"
+        f"AHI Head Parameters:   {ahi_params:,}\n"
         f"-----------------------------------------\n"
     )
     print(report)

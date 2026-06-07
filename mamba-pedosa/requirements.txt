@@ -27,3 +27,4 @@ fvcore
 jupyter
 seaborn
 matplotlib
+flwr
